@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 def test_complete_workflow_e2e(client: TestClient):
     
-    #1: Crear un usuario
+    # 1: Crear un usuario
     user_data = {
         "name": "Usuario de Prueba E2E",
         "email": "e2e@test.com"
@@ -15,7 +15,7 @@ def test_complete_workflow_e2e(client: TestClient):
     user_id = user["id"]
     print(f"✓ Usuario creado con ID: {user_id}")
     
-    #2: Crear varias tareas para el usuario
+    # 2: Crear varias tareas para el usuario
     tasks_to_create = [
         {"title": "Estudiar FastAPI", "description": "Repasar conceptos", "user_id": user_id},
         {"title": "Hacer ejercicio", "description": "30 minutos", "user_id": user_id},
@@ -32,14 +32,14 @@ def test_complete_workflow_e2e(client: TestClient):
     
     print(f"✓ {len(created_tasks)} tareas creadas")
     
-    #3: Listar todas las tareas del usuario
+    # 3: Listar todas las tareas del usuario
     tasks_response = client.get(f"/users/{user_id}/tasks")
     assert tasks_response.status_code == 200
     user_tasks = tasks_response.json()
     assert len(user_tasks) == 3
     print(f"✓ Tareas del usuario listadas: {len(user_tasks)}")
     
-    #4: Actualizar el estado de una tarea (marcarla como completada)
+    # 4: Actualizar el estado de una tarea (marcarla como completada)
     first_task_id = created_tasks[0]["id"]
     update_data = {
         "is_completed": True,
@@ -57,7 +57,7 @@ def test_complete_workflow_e2e(client: TestClient):
     assert verify_response.status_code == 200
     assert verify_response.json()["is_completed"] is True
     
-    #5: Eliminar una tarea
+    # 5: Eliminar una tarea
     second_task_id = created_tasks[1]["id"]
     delete_response = client.delete(f"/tasks/{second_task_id}")
     assert delete_response.status_code == 204
@@ -67,7 +67,7 @@ def test_complete_workflow_e2e(client: TestClient):
     get_deleted_response = client.get(f"/tasks/{second_task_id}")
     assert get_deleted_response.status_code == 404
     
-    #6: Verificar el estado final
+    # 6: Verificar el estado final
     final_tasks_response = client.get(f"/users/{user_id}/tasks")
     assert final_tasks_response.status_code == 200
     final_tasks = final_tasks_response.json()
