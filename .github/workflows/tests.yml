@@ -1,0 +1,97 @@
+name: Tests and Analysis
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: parcial_db
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Wait for MySQL
+      run: |
+        for i in {1..30}; do
+          if mysqladmin ping -h"127.0.0.1" -P3306 -uroot -proot_password --silent; then
+            echo "MySQL is ready"
+            break
+          fi
+          echo "Waiting for MySQL..."
+          sleep 2
+        done
+    
+    - name: Run Flake8 (Static Analysis)
+      run: |
+        echo "Running Flake8..."
+        flake8 src/ tests/ || exit 1
+    
+    - name: Run Bandit (Security Analysis)
+      run: |
+        echo "Running Bandit..."
+        bandit -r src/ -f json -o bandit-report.json
+        bandit -r src/ || exit 1
+    
+    - name: Run Unit Tests
+      run: |
+        echo "Running Unit Tests..."
+        pytest tests/test_unit.py -v || exit 1
+    
+    - name: Run Integration Tests
+      run: |
+        echo "Running Integration Tests..."
+        pytest tests/test_integration.py -v || exit 1
+    
+    - name: Run E2E Tests
+      run: |
+        echo "Running E2E Tests..."
+        pytest tests/test_e2e.py -v || exit 1
+    
+    - name: Run All Tests with Coverage
+      run: |
+        echo "Running All Tests with Coverage..."
+        pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=xml || exit 1
+    
+    - name: Print Success Message
+      if: success()
+      run: |
+        echo "================================"
+        echo "          ✅ OK ✅              "
+        echo "================================"
+        echo "All tests passed successfully!"
+        echo "Static analysis completed!"
+        echo "================================"
+    
+    - name: Upload coverage reports
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
+        fail_ci_if_error: false
